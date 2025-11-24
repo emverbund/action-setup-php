@@ -11,7 +11,7 @@ get_tool_version() {
   alp="[a-zA-Z0-9\.]"
   version_regex="[0-9]+((\.{1}$alp+)+)(\.{0})(-$alp+){0,1}"
   if [ "$tool" = "composer" ]; then
-    composer_alias_version="$(grep -Ea "const\sBRANCH_ALIAS_VERSION" "$tool_path_dir/composer" | grep -Eo "$version_regex")"
+    composer_alias_version="$(grep -Ea "const\sBRANCH_ALIAS_VERSION" "${tool_path_dir:?}/composer" | grep -Eo "$version_regex")"
     if [[ -n "$composer_alias_version" ]]; then
       composer_version="$composer_alias_version+$(grep -Ea "const\sVERSION" "$tool_path_dir/composer" | grep -Eo "$alp+" | tail -n 1)"
     else
@@ -46,6 +46,30 @@ configure_composer() {
   set_composer_auth
 }
 
+# Function to merge auth.json fragments.
+update_auth_json() {
+  local auth_file="$composer_home/auth.json"
+  local merged
+  [[ -f "$auth_file" ]] && merged=$(<"$auth_file") || merged='{}'
+  for frag in "$@"; do
+    local obj="{$frag}"
+    merged=$(jq -n --argjson b "$merged" --argjson n "$obj" '
+      if $n|has("http-basic") then
+        (($b["http-basic"]//{}) + $n["http-basic"]) as $hb
+        | ($b + $n) | .["http-basic"] = $hb
+      else
+        $b + $n
+      end
+    ')
+  done
+  printf '%s' "$merged" > "$composer_home/auth.json"
+}
+
+# Function to check if public GitHub token authentication is possible.
+can_access_public_github() {
+  curl --fail -s -H "Authorization: token $1" 'https://api.github.com/' >/dev/null 2>&1
+}
+
 # Function to setup authentication in composer.
 set_composer_auth() {
   if [ -n "$COMPOSER_AUTH_JSON" ]; then
@@ -59,11 +83,18 @@ set_composer_auth() {
   if [ -n "$PACKAGIST_TOKEN" ]; then
     composer_auth+=( '"http-basic": {"repo.packagist.com": { "username": "token", "password": "'"$PACKAGIST_TOKEN"'"}}' )
   fi
-  if [ -n "${GITHUB_TOKEN:-$COMPOSER_TOKEN}" ]; then
-    composer_auth+=( '"github-oauth": {"github.com": "'"${GITHUB_TOKEN:-$COMPOSER_TOKEN}"'"}' )
+  token="${COMPOSER_TOKEN:-$GITHUB_TOKEN}"
+  if [ -n "$token" ]; then
+    write_token=true
+    if [ "$GITHUB_SERVER_URL" != "https://github.com" ]; then
+      can_access_public_github "$token" || write_token=false
+    fi
+    if [ "$write_token" = 'true' ]; then
+      composer_auth+=( '"github-oauth": {"github.com": "'"$token"'"}' )
+    fi
   fi
   if ((${#composer_auth[@]})); then
-    add_env COMPOSER_AUTH "{$(IFS=$','; echo "${composer_auth[*]}")}"
+    update_auth_json "${composer_auth[@]}"
   fi
 }
 
@@ -169,7 +200,11 @@ add_tool() {
     elif [ -e /tmp/"$tool" ]; then
       sudo cp -a /tmp/"$tool" "$tool_path"
     fi
-    add_log "$cross" "$tool" "Could not setup $tool"
+    if [ "$status_code" = "404" ]; then
+      add_log "$cross" "$tool" "Failed to download $tool from ${url[*]}"
+    else
+      add_log "$cross" "$tool" "Could not setup $tool"
+    fi
   fi
 }
 

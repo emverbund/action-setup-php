@@ -4,7 +4,7 @@ export cross="✗"
 export curl_opts=(-sL)
 export old_versions="5.[3-5]"
 export jit_versions="8.[0-9]"
-export nightly_versions="8.[3-9]"
+export nightly_versions="8.[6-9]"
 export xdebug3_versions="7.[2-4]|8.[0-9]"
 export latest="releases/latest/download"
 export github="https://github.com/shivammathur"
@@ -110,11 +110,11 @@ release_lock() {
 # Function to get the SHA256 hash of a string.
 get_sha256() {
   local input=$1
-  if command -v sha256sum >/dev/null 2>&1; then
+  if command -v sha256sum >/dev/null; then
     printf '%s' "$input" | sha256sum | cut -d' ' -f1
-  elif command -v shasum >/dev/null 2>&1; then
+  elif command -v shasum >/dev/null; then
     printf '%s' "$input" | shasum -a 256 | cut -d' ' -f1
-  elif command -v openssl >/dev/null 2>&1; then
+  elif command -v openssl >/dev/null; then
     printf '%s' "$input" | openssl dgst -sha256 | cut -d' ' -f2
   fi
 }
@@ -145,7 +145,7 @@ get() {
       status_code=$(sudo curl -w "%{http_code}" -o "$file_path" "${curl_opts[@]}" "$link")
       [ "$status_code" = "200" ] && break
     done
-    [ "$execute" = "-e" ] && sudo chmod a+x "$file_path"
+    [[ "$execute" = "-e" && -e "$file_path" ]] && sudo chmod a+x "$file_path"
     [ "$mode" = "-v" ] && echo "$status_code"
     [ "$runner" = "self-hosted" ] && release_lock "$lock_path"
   fi
@@ -221,7 +221,7 @@ self_hosted_setup() {
       exit 1
     else
       self_hosted_helper >/dev/null 2>&1
-      add_env RUNNER_TOOL_CACHE /tmp
+      add_env RUNNER_TOOL_CACHE /opt/hostedtoolcache
     fi
   fi
 }
@@ -244,7 +244,9 @@ configure_php() {
   add_php_config
   ini_config_dir="${src:?}"/configs/ini
   ini_config_files=("$ini_config_dir"/php.ini)
-  jit_config_files=("$ini_config_dir"/jit.ini)
+  arch="$(uname -m)"
+  [[ "$arch" = "arm64" || "$arch" = "aarch64" ]] && jit_ini="$ini_config_dir"/jit_aarch64.ini || jit_ini="$ini_config_dir"/jit.ini
+  jit_config_files=("$jit_ini")
   [[ "$version" =~ $xdebug3_versions ]] && ini_config_files+=("$ini_config_dir"/xdebug.ini)
   cat "${ini_config_files[@]}" | sudo tee -a "${ini_file[@]:?}" >/dev/null 2>&1
   [[ "$version" =~ $jit_versions ]] && cat "${jit_config_files[@]}" | sudo tee -a "${pecl_file:-${ini_file[@]}}" >/dev/null 2>&1

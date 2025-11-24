@@ -10,7 +10,7 @@
   <a href="https://github.com/shivammathur/setup-php" title="GitHub action to setup PHP"><img alt="GitHub Actions status" src="https://github.com/shivammathur/setup-php/workflows/Main%20workflow/badge.svg"></a>
   <a href="https://codecov.io/gh/shivammathur/setup-php" title="Code coverage"><img alt="Codecov Code Coverage" src="https://img.shields.io/codecov/c/github/shivammathur/setup-php?logo=codecov"></a>
   <a href="https://github.com/shivammathur/setup-php/blob/main/LICENSE" title="license"><img alt="LICENSE" src="https://img.shields.io/badge/license-MIT-428f7e.svg?logo=open%20source%20initiative&logoColor=white&labelColor=555555"></a>
-  <a href="#tada-php-support" title="PHP Versions Supported"><img alt="PHP Versions Supported" src="https://img.shields.io/badge/php-5.3%20to%208.5-777bb3.svg?logo=php&logoColor=white&labelColor=555555"></a>
+  <a href="#tada-php-support" title="PHP Versions Supported"><img alt="PHP Versions Supported" src="https://img.shields.io/badge/php-5.3%20to%208.6-777bb3.svg?logo=php&logoColor=white&labelColor=555555"></a>
 </p>
 <p align="center">
   <a href="https://reddit.com/r/setup_php" title="setup-php reddit"><img alt="setup-php reddit" src="https://img.shields.io/badge/reddit-join-FF5700?logo=reddit&logoColor=FF5700&labelColor=555555"></a>
@@ -68,18 +68,20 @@ Both `GitHub-hosted` and `self-hosted` runners are supported by `setup-php` on t
 
 ### GitHub-Hosted Runners
 
-| Virtual environment | Arch    | YAML workflow label                | Pre-installed PHP      |
-|---------------------|---------|------------------------------------|------------------------|
-| Ubuntu 24.04        | x86_64  | `ubuntu-latest` or `ubuntu-24.04`  | `PHP 8.3`              |
-| Ubuntu 22.04        | x86_64  | `ubuntu-22.04`                     | `PHP 8.1`              |
-| Ubuntu 24.04        | aarch64 | `ubuntu-24.04-arm`                 | `PHP 8.3`              |
-| Ubuntu 22.04        | aarch64 | `ubuntu-22.04-arm`                 | `PHP 8.1`              |
-| Windows Server 2025 | x64     | `windows-2025`                     | `PHP 8.3`              |
-| Windows Server 2022 | x64     | `windows-latest` or `windows-2022` | `PHP 8.3`              |
-| Windows Server 2019 | x64     | `windows-2019`                     | `PHP 8.3`              |
-| macOS Sequoia 15.x  | arm64   | `macos-15`                         | -                      |
-| macOS Sonoma 14.x   | arm64   | `macos-latest` or `macos-14`       | -                      |
-| macOS Ventura 13.x  | x86_64  | `macos-13`                         | `PHP 8.3`              |
+| Virtual environment | Arch    | YAML workflow label                | Pre-installed PHP |
+|---------------------|---------|------------------------------------|-------------------|
+| Ubuntu 24.04        | x86_64  | `ubuntu-latest` or `ubuntu-24.04`  | `PHP 8.3`         |
+| Ubuntu 22.04        | x86_64  | `ubuntu-22.04`                     | `PHP 8.1`         |
+| Ubuntu 24.04        | aarch64 | `ubuntu-24.04-arm`                 | `PHP 8.3`         |
+| Ubuntu 22.04        | aarch64 | `ubuntu-22.04-arm`                 | `PHP 8.1`         |
+| Windows Server 2025 | x64     | `windows-2025`                     | `PHP 8.3`         |
+| Windows Server 2022 | x64     | `windows-latest` or `windows-2022` | `PHP 8.3`         |
+| Windows Server 2019 | x64     | `windows-2019`                     | `PHP 8.3`         |
+| macOS Tahoe 26.x    | arm64   | `macos-26`                         | -                 |
+| macOS Sequoia 15.x  | arm64   | `macos-latest` or `macos-15`       | -                 |
+| macOS Sonoma 14.x   | arm64   | `macos-14`                         | -                 |
+| macOS Sequoia 15.x  | x86_64  | `macos-15-intel`                   | `PHP 8.3`         |
+| macOS Ventura 13.x  | x86_64  | `macos-13`                         | `PHP 8.3`         |
 
 ### Self-Hosted Runners
 
@@ -91,6 +93,7 @@ Both `GitHub-hosted` and `self-hosted` runners are supported by `setup-php` on t
 | Debian 11                        | `self-hosted` or `Linux`   |
 | Windows 7 and newer              | `self-hosted` or `Windows` |
 | Windows Server 2012 R2 and newer | `self-hosted` or `Windows` |
+| macOS Tahoe 26.x x86_64/arm64    | `self-hosted` or `macOS`   |
 | macOS Sequoia 15.x x86_64/arm64  | `self-hosted` or `macOS`   |
 | macOS Sonoma 14.x x86_64/arm64   | `self-hosted` or `macOS`   |
 | macOS Ventura 13.x x86_64/arm64  | `self-hosted` or `macOS`   |
@@ -101,11 +104,11 @@ Both `GitHub-hosted` and `self-hosted` runners are supported by `setup-php` on t
 
 ## :tada: PHP Support
 
-On all supported OS/Platforms the following PHP versions can be set up as per the runner.
+On all supported OS/Platforms, the following PHP versions can be set up as per the runner.
 
-- PHP 5.3 to PHP 8.5 on GitHub-hosted runners, except for macOS ARM64 runners (macos-14).
-- PHP 5.6 to PHP 8.5 on GitHub-hosted macOS ARM64 runners (macos-14).
-- PHP 5.6 to PHP 8.5 on self-hosted runners.
+- PHP 5.3 to PHP 8.6 on GitHub-hosted runners, except for macOS ARM64 runners (macos-14).
+- PHP 5.6 to PHP 8.6 on GitHub-hosted macOS ARM64 runners (macos-14).
+- PHP 5.6 to PHP 8.6 on self-hosted runners.
 
 | PHP Version | Stability | Release Support       | Runner Support                 |
 |-------------|-----------|-----------------------|--------------------------------|
@@ -123,11 +126,12 @@ On all supported OS/Platforms the following PHP versions can be set up as per th
 | `8.2`       | `Stable`  | `Security fixes only` | `GitHub-hosted`, `self-hosted` |
 | `8.3`       | `Stable`  | `Active`              | `GitHub-hosted`, `self-hosted` |
 | `8.4`       | `Stable`  | `Active`              | `GitHub-hosted`, `self-hosted` |
-| `8.5`       | `Nightly` | `In development`      | `GitHub-hosted`, `self-hosted` |
+| `8.5`       | `Stable`  | `Active`              | `GitHub-hosted`, `self-hosted` |
+| `8.6`       | `Nightly` | `In development`      | `GitHub-hosted`, `self-hosted` |
 
 
 > [!Note]
-> - Specifying `8.5` in `php-version` input installs a nightly build of `PHP 8.5.0-dev`. See [nightly build setup](#nightly-build-setup) for more information.
+> - Specifying `8.6` in `php-version` input installs a nightly build of `PHP 8.6.0-dev` from the master branch of PHP. See [nightly build setup](#nightly-build-setup) for more information.
 > - To use JIT on `PHP 8.0` and above, refer to the [JIT configuration](#jit-configuration) section.
 
 ## :heavy_plus_sign: PHP Extension Support
@@ -229,7 +233,7 @@ This disables all core and third-party shared extensions and thus, can break som
 
 These tools can be set up globally using the `tools` input. It accepts a string in csv-format.
 
-[`behat`], [`blackfire`], [`blackfire-player`], [`box`], [`castor`], [`churn`], [`codeception`], [`composer`], [`composer-dependency-analyser`], [`composer-normalize`], [`composer-prefetcher`], [`composer-require-checker`], [`composer-unused`], [`cs2pr`], [`deployer`], [`ecs`], [`flex`], [`grpc_php_plugin`], [`infection`], [`parallel-lint`], [`pecl`], [`phan`], [`phing`], [`phinx`], [`phive`], [`php-config`], [`php-cs-fixer`], [`php-scoper`], [`phpcbf`], [`phpcpd`], [`phpcs`], [`phpdoc`] or [`phpDocumentor`], [`phpize`], [`phplint`], [`phpmd`], [`phpspec`], [`phpstan`], [`phpunit`], [`phpunit-bridge`], [`phpunit-polyfills`], [`pie`], [`pint`], [`prestissimo`], [`protoc`], [`psalm`], [`rector`], [`symfony`] or [`symfony-cli`], [`vapor`] or [`vapor-cli`], [`wp`] or [`wp-cli`]
+[`backward-compatibility-check`], [`behat`], [`blackfire`], [`blackfire-player`], [`box`], [`castor`], [`churn`], [`codeception`], [`composer`], [`composer-dependency-analyser`], [`composer-normalize`], [`composer-prefetcher`], [`composer-require-checker`], [`composer-unused`], [`cs2pr`], [`deployer`], [`ecs`], [`flex`], [`grpc_php_plugin`], [`infection`], [`mago`], [`name-collision-detector`], [`parallel-lint`], [`pecl`], [`phan`], [`phing`], [`phinx`], [`phive`], [`php-config`], [`php-cs-fixer`], [`php-scoper`], [`phpcbf`], [`phpcpd`], [`phpcs`], [`phpdoc`] or [`phpDocumentor`], [`phpize`], [`phplint`], [`phpmd`], [`phpspec`], [`phpstan`], [`phpunit`], [`phpunit-bridge`], [`phpunit-polyfills`], [`pie`], [`pint`], [`prestissimo`], [`protoc`], [`psalm`], [`rector`], [`symfony`] or [`symfony-cli`], [`vapor`] or [`vapor-cli`], [`wp`] or [`wp-cli`]
 
 ```yaml
 - name: Setup PHP with tools
@@ -258,19 +262,6 @@ These tools can be set up globally using the `tools` input. It accepts a string 
 
   When you specify just the major version or the version in `major.minor` format, the latest patch version matching the input will be setup.
 
-  With the exception of major versions of `composer`, if you specify only the `major` version or the version in `major.minor` format for a tool you can get rate limited by GitHub's API. To avoid this, it is recommended to provide a [`GitHub` OAuth token](https://github.com/shivammathur/setup-php#composer-github-oauth "Composer GitHub OAuth").
-  You can do that by setting `GITHUB_TOKEN` environment variable. The `COMPOSER_TOKEN` environment variable has been deprecated in favor of `GITHUB_TOKEN` and will be removed in the next major version.
-
-```yaml
-- name: Setup PHP with tools
-  uses: shivammathur/setup-php@v2
-  with:
-    php-version: '8.4'
-    tools: php-cs-fixer:3.64, phpunit:11.4
-  env:
-    GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-```
-
 - The latest stable version of `composer` is set up by default. You can set up the required `composer` version by specifying the major version `v1` or `v2`, or the version in `major.minor` or `semver` format. Additionally, for composer `snapshot` and `preview` can also be specified to set up the respective releases.
 
 ```yaml
@@ -278,7 +269,7 @@ These tools can be set up globally using the `tools` input. It accepts a string 
   uses: shivammathur/setup-php@v2
   with:
     php-version: '8.4'
-    tools: composer:v2
+    tools: composer:v1
 ```
 
 - If you do not use composer in your workflow, you can specify `tools: none` to skip it.
@@ -430,7 +421,7 @@ Disable coverage for these reasons:
   - The `php-version-file` input if it exists
   - A `composer.lock` file and the `platform-overrides.php` value
   - A `composer.json` file and the `config.platform.php` value
-  - If the `composer.lock` or `composer.json` file is in a sub-directory in your repository, please specify the subdirectory path in `COMPOSER_PROJECT_DIR` env.
+  - If the `composer.lock` or `composer.json` file is in a subdirectory in your repository, please specify the subdirectory path in `COMPOSER_PROJECT_DIR` env.
 
 #### `php-version-file` (optional)
 
@@ -438,7 +429,7 @@ Disable coverage for these reasons:
 - Accepts a `string`. For example `'.phpenv-version'`.
 - See [PHP support](#tada-php-support) for the supported PHP versions.
 - By default, `.php-version` file is used.
-- The file either have the PHP version as its content, or follow the asdf `.tool-versions` format.
+- The file needs to either have the PHP version as its content or follows the asdf `.tool-versions` format.
 - If not specified and the default `.php-version` file is not found, the latest stable PHP version is set up.
 
 #### `extensions` (optional)
@@ -472,6 +463,13 @@ Disable coverage for these reasons:
 - Specify the tools you want to set up.
 - Accepts a `string` in csv-format. For example: `phpunit, phpcs`
 - See [tools support](#wrench-tools-support) for tools supported.
+
+#### `github-token` (optional)
+
+- Specify the GitHub token to use for authentication.
+- Accepts a `string`.
+- By default, `GITHUB_TOKEN` secret provided by GitHub Actions is used.
+- For GitHub Enterprise users, it is recommended to use a Personal Access Token (PAT).
 
 ### Outputs
 
@@ -561,23 +559,21 @@ jobs:
         ini-values: post_max_size=256M, max_execution_time=180
         coverage: xdebug
         tools: php-cs-fixer, phpunit:${{ matrix.phpunit-versions }}
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 ```
 
 ### Nightly Build Setup
 
-> Set up a nightly build of `PHP 8.5`.
+> Set up a nightly build of `PHP 8.6`.
 
 - These PHP versions are currently in active development and might contain bugs and breaking changes.
-- Some user space extensions might not support this version currently.
+- Some user space extensions might not support these versions currently.
 
 ```yaml
 steps:
 - name: Setup nightly PHP
   uses: shivammathur/setup-php@v2
   with:
-    php-version: '8.5'
+    php-version: '8.6'
     extensions: mbstring
     ini-values: post_max_size=256M, max_execution_time=180
     coverage: xdebug
@@ -750,7 +746,7 @@ act -P ubuntu-22.04=shivammathur/node:2204
 
 - To enable JIT, enable `opcache` in cli mode by setting `opcache.enable_cli=1`.
 - JIT conflicts with `Xdebug`, `PCOV`, and other extensions which override `zend_execute_ex` function, so set `coverage: none` and disable any such extension if added.
-- By default, `opcache.jit=1235` and `opcache.jit_buffer_size=256M` are set which can be changed using `ini-values` input.
+- By default, `opcache.jit=1235` and `opcache.jit_buffer_size=256M` (`opcache.jit_buffer_size=128M` on ARM-based environments) are set which can be changed using `ini-values` input.
 - For detailed information about JIT related directives refer to the [`official PHP documentation`](https://www.php.net/manual/en/opcache.configuration.php#ini.opcache.jit "opcache.jit documentation").
 
 For example to enable JIT in `tracing` mode with buffer size of `64 MB`.
@@ -804,18 +800,19 @@ restore-keys: ${{ runner.os }}-composer-${{ matrix.prefer }}-
 
 ### GitHub Composer Authentication
 
-If you have a number of workflows which set up multiple tools or have many composer dependencies, you might hit the GitHub's rate limit for composer. Also, if you specify only the major version or the version in `major.minor` format, you can hit the rate limit. To avoid this you can specify an `OAuth` token by setting `GITHUB_TOKEN` environment variable. You can use [`GITHUB_TOKEN`](https://help.github.com/en/actions/configuring-and-managing-workflows/authenticating-with-the-github_token "GITHUB_TOKEN documentation") secret for this purpose.
-
-The `COMPOSER_TOKEN` environment variable has been deprecated in favor of `GITHUB_TOKEN` and will be removed in the next major version.
+By default, setup-php uses the `GITHUB_TOKEN` secret that is generated for each workflow run. In case you want to use a Personal Access Token (PAT) instead, you can set the `github-token` input.
 
 ```yaml
 - name: Setup PHP
   uses: shivammathur/setup-php@v2
   with:
     php-version: '8.4'
-  env:
-    GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    github-token: ${{ secrets.YOUR_PAT_TOKEN }}
 ```
+
+The `COMPOSER_TOKEN` and `GITHUB_TOKEN` environment variables have been deprecated in favor of the `github-token` input and will be removed in the next major version.
+
+For GitHub Enterprise users, the `github-token` input does not default to the `GITHUB_TOKEN` secret. Therefore, it's recommended to set the `github-token` input to a Personal Access Token (PAT).
 
 ### Private Packagist Authentication
 
@@ -1005,31 +1002,45 @@ Examples of using `setup-php` with various PHP frameworks and packages.
 
 ## :sparkling_heart: Support This Project
 
-- Please star the project and share it. If you blog, please share your experience of using `setup-php`.
-- Please [reach out](mailto:contact@setup-php.com) if you have any questions about sponsoring setup-php.
-
-Many users and organisations support setup-php via [GitHub Sponsors](https://github.com/sponsors/shivammathur).
-
-<a href="https://github.com/sponsors/shivammathur"><img src="https://setup-php.com/sponsors.svg?" alt="Sponsor shivammathur"></a>
-
 These companies generously provide setup-php their products and services to aid in the development of this project.
 
 <p>
-  <a href="https://www.jetbrains.com/?from=setup-php">
-    <img src="https://setup-php.com/sponsors/jetbrains.svg" alt="JetBrains" width="212" height="120">
+  <a target="_blank" href="https://www.jetbrains.com/?from=setup-php#gh-light-mode-only">
+    <img src="https://setup-php.com/sponsors/jetbrains.svg" alt="JetBrains" width="140" height="100">
+  </a>
+  <a target="_blank" href="https://www.jetbrains.com/?from=setup-php#gh-dark-mode-only">
+    <img src="https://setup-php.com/sponsors/jetbrains-white.svg" alt="JetBrains" width="140" height="100">
   </a>
   &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
-  <a href="https://www.macstadium.com/opensource/members#gh-light-mode-only">
-    <img src="https://setup-php.com/sponsors/macstadium.png" alt="Mac Stadium" width="296" height="120">
+  <a target="_blank" href="https://www.cloudflare.com/lp/project-alexandria/#gh-light-mode-only">
+    <img src="https://setup-php.com/sponsors/cloudflare.svg" alt="Cloudflare" width="240" height="80">
   </a>
-  <a href="https://www.macstadium.com/opensource/members#gh-dark-mode-only">
-    <img src="https://setup-php.com/sponsors/macstadium-white.png" alt="Mac Stadium" width="296" height="120">
+  <a target="_blank" href="https://www.cloudflare.com/lp/project-alexandria/#gh-dark-mode-only">
+    <img src="https://setup-php.com/sponsors/cloudflare-white.svg" alt="Cloudflare" width="240" height="80">
   </a>
   &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
-  <a href="https://tidelift.com/subscription/pkg/npm-setup-php">
-    <img src="https://setup-php.com/sponsors/tidelift.png" alt="Tidelift" width="140" height="120">
+  <a target="_blank" href="https://www.macstadium.com/company/opensource#gh-light-mode-only">
+    <img src="https://setup-php.com/sponsors/macstadium.png" alt="Mac Stadium" width="200" height="80">
+  </a>
+  <a target="_blank" href="https://www.macstadium.com/company/opensource#gh-dark-mode-only">
+    <img src="https://setup-php.com/sponsors/macstadium-white.png" alt="Mac Stadium" width="200" height="80">
+  </a>
+  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+  <a target="_blank" href="https://m.do.co/c/f1a8ee1277b0#gh-light-mode-only">
+    <img src="https://setup-php.com/sponsors/digitalocean.svg" alt="Digitalocean" width="100" height="100">
+  </a>
+  <a target="_blank" href="https://m.do.co/c/f1a8ee1277b0#gh-dark-mode-only">
+    <img src="https://setup-php.com/sponsors/digitalocean-white.svg" alt="Digitalocean" width="100" height="100">
   </a>
 </p>
+
+Many users and organizations support setup-php via [GitHub Sponsors](https://github.com/sponsors/shivammathur).
+
+<a href="https://github.com/sponsors/shivammathur"><img src="https://setup-php.com/sponsors.svg?" alt="Sponsor shivammathur"></a>
+
+- If you use setup-php, please consider starring the project and share it. 
+- If you blog, please share your experience of using `setup-php`.
+- Please [reach out](mailto:contact@setup-php.com) if you have any questions about sponsoring setup-php.
 
 ## :package: Dependencies
 
@@ -1056,6 +1067,7 @@ These companies generously provide setup-php their products and services to aid 
 
 
 <!-- Links to tools -->
+[`backward-compatibility-check`]: https://github.com/Roave/BackwardCompatibilityCheck
 [`behat`]:                    https://docs.behat.org/en/latest/
 [`blackfire`]:                https://blackfire.io/docs/php/index
 [`blackfire-player`]:         https://blackfire.io/docs/builds-cookbooks/player
@@ -1072,9 +1084,11 @@ These companies generously provide setup-php their products and services to aid 
 [`cs2pr`]:                    https://github.com/staabm/annotate-pull-request-from-checkstyle
 [`deployer`]:                 https://deployer.org/
 [`ecs`]:                      https://github.com/easy-coding-standard/easy-coding-standard
-[`flex`]:                     https://flex.symfony.com/
+[`flex`]:                     https://github.com/symfony/flex
 [`grpc_php_plugin`]:          https://grpc.io/
 [`infection`]:                https://infection.github.io/
+[`mago`]:                     https://github.com/carthage-software/mago
+[`name-collision-detector`]:  https://github.com/shipmonk/name-collision-detector
 [`parallel-lint`]:            https://github.com/php-parallel-lint/PHP-Parallel-Lint
 [`pecl`]:                     https://pecl.php.net/
 [`phan`]:                     https://github.com/phan/phan/wiki

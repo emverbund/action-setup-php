@@ -1,8 +1,10 @@
 # Function to log result of installing extension.
 add_extension_log() {
-  (
-    check_extension "$(echo "$1" | cut -d '-' -f 1)" && add_log "${tick:?}" "$1" "$2"
-  ) || add_log "${cross:?}" "$1" "Could not install $1 on PHP ${semver:?}"
+  if check_extension ${1%%-*}; then
+    add_log "${tick:?}" "$1" "$2"
+  else
+    add_log "${cross:?}" "$1" "${3:-Could not install $1 on PHP ${semver:?}}"
+  fi
 }
 
 # Function to test if extension is loaded.
@@ -216,7 +218,7 @@ add_pecl_extension() {
     add_log "${tick:?}" "$extension" "Enabled"
   else
     [ -n "$pecl_version" ] && pecl_version="-$pecl_version"
-    pecl_install "$extension$pecl_version" || add_extension "$extension" "$(get_extension_prefix "$extension")" >/dev/null 2>&1
+    pecl_install "$extension$pecl_version" || ( [ "${fail_fast:?}" = "false" ] && add_extension "$extension" "$(get_extension_prefix "$extension")" >/dev/null 2>&1)
     extension_version="$(php -r "echo phpversion('$extension');")"
     [ -n "$extension_version" ] && extension_version="-$extension_version"
     add_extension_log "$extension$extension_version" "Installed and enabled"

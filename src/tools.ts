@@ -1,5 +1,6 @@
 import path from 'path';
 import fs from 'fs';
+import * as cv from 'compare-versions';
 import * as fetch from './fetch';
 import * as packagist from './packagist';
 import * as utils from './utils';
@@ -20,6 +21,11 @@ interface IRef {
  * @param data
  */
 export async function getSemverVersion(data: RS): Promise<string> {
+  const fixSemver = (t: string): string => {
+    if (/^\d+\.\d+\.\d+(-|$)/.test(t)) return t;
+    const m = t.match(/^(\d+\.\d+\.\d+)([A-Za-z]+[0-9A-Za-z.]+)$/);
+    return m ? `${m[1]}-${m[2]}` : t;
+  };
   const search: string = data['version_prefix'] + data['version'];
   const url = `https://api.github.com/repos/${data['repository']}/git/matching-refs/tags%2F${search}.`;
   const github_token: string =
@@ -30,10 +36,24 @@ export async function getSemverVersion(data: RS): Promise<string> {
     data['error'] = response.error ?? `No version found with prefix ${search}.`;
     return data['version'];
   } else {
-    const refs = JSON.parse(response['data']).reverse();
-    const ref = refs.find((i: IRef) => /.*\d+.\d+.\d+$/.test(i['ref']));
-    const tag: string = (ref || refs[0])['ref'].split('/').pop();
-    return tag.replace(/^v(\d)/, '$1');
+    const refs: IRef[] = JSON.parse(response['data']);
+    const tags = refs
+      .map((i: IRef) => (i.ref?.split('/').pop() ?? '').replace(/^v(?=\d)/, ''))
+      .filter((t: string) => t.length > 0);
+    const fixedToOriginal = new Map<string, string>();
+    const fixed = tags.map(t => {
+      const f = fixSemver(t);
+      fixedToOriginal.set(f, t);
+      return f;
+    });
+    fixed.sort((a, b) => {
+      try {
+        return cv.compareVersions(b, a);
+      } catch {
+        return b.localeCompare(a, 'en', {numeric: true, sensitivity: 'base'});
+      }
+    });
+    return fixedToOriginal.get(fixed[0]) ?? fixed[0];
   }
 }
 
@@ -263,30 +283,33 @@ export async function addComposer(data: RS): Promise<string> {
   const github = data['github'];
   const getcomposer = data['domain'];
   const cds = 'https://dl.cloudsmith.io';
+  const spc = 'https://artifacts.setup-php.com';
   const filename = `composer-${data['php_version']}-${channel}.phar`;
   const releases_url = `${github}/shivammathur/composer-cache/releases/latest/download/${filename}`;
   const cds_url = `${cds}/public/shivammathur/composer-cache/raw/files/${filename}`;
+  const spc_url = `${spc}/composer/${filename}`;
   const lts_url = `${getcomposer}/download/latest-2.2.x/composer.phar`;
   const is_lts = /^5\.[3-6]$|^7\.[0-1]$/.test(data['php_version']);
-  const version_source_url = `${getcomposer}/composer-${channel}.phar`;
-  let cache_url = `${releases_url},${cds_url}`;
+  const channel_source_url = `${getcomposer}/composer-${channel}.phar`;
+  const version_source_url = `${getcomposer}/download/${channel}/composer.phar`;
+  let cache_url = `${releases_url},${spc_url},${cds_url}`;
   let source_url = `${getcomposer}/composer.phar`;
   switch (true) {
     case /^snapshot$/.test(channel):
       source_url = is_lts ? lts_url : source_url;
       break;
     case /^preview$|^2$/.test(channel):
-      source_url = is_lts ? lts_url : version_source_url;
+      source_url = is_lts ? lts_url : channel_source_url;
       break;
     case /^1$/.test(channel):
-      source_url = version_source_url;
+      source_url = channel_source_url;
       break;
     case /^\d+\.\d+\.\d+[\w-]*$/.test(data['version']):
       cache_url = `${github}/${data['repository']}/releases/download/${data['version']}/composer.phar`;
       source_url = version_source_url;
       break;
     default:
-      source_url = is_lts ? lts_url : version_source_url;
+      source_url = is_lts ? lts_url : channel_source_url;
   }
   const use_cache: boolean = (await utils.readEnv('NO_TOOLS_CACHE')) !== 'true';
   data['url'] = use_cache ? `${cache_url},${source_url}` : source_url;
@@ -419,6 +442,7 @@ export async function addPhive(data: RS): Promise<string> {
  * @param data
  */
 export async function addPHPUnitTools(data: RS): Promise<string> {
+  /* istanbul ignore next */
   if (data['version'] === 'latest') {
     data['version'] =
       (await packagist.search(data['packagist'], data['php_version'])) ??

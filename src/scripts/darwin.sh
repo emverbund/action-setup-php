@@ -39,8 +39,19 @@ get_extension_from_formula() {
   local formula=$1
   local extension
   extension=$(grep -E "^$formula=" "$src"/configs/brew_extensions | cut -d '=' -f 2)
-  [[ -z "$extension" ]] && extension="$(echo "$formula" | sed -E "s/pecl_|[0-9]//g")"
+  [[ -z "$extension" ]] && extension="$(echo "$formula" | sed -E "s/pecl_|php|[0-9]//g")"
   echo "$extension"
+}
+
+# Function to get renamed formula.
+get_renamed_formula() {
+  local formula=$1
+  formula_renames_json="$tap_dir/$ext_tap/formula_renames.json"
+  if [ -e "$formula_renames_json" ] && grep -q "$formula@$version\":" "$formula_renames_json"; then
+    grep "$formula@$version\":" "$formula_renames_json" | cut -d ':' -f 2 | tr -d ' ",' | cut -d '@' -f 1
+  else
+    echo $formula
+  fi
 }
 
 # Function to copy extension binaries to the extension directory.
@@ -69,6 +80,7 @@ add_brew_extension() {
   else
     add_brew_tap "$php_tap"
     add_brew_tap "$ext_tap"
+    formula="$(get_renamed_formula "$formula")"
     update_dependencies >/dev/null 2>&1
     handle_dependency_extensions "$formula" "$extension" >/dev/null 2>&1
     (brew install "${brew_opts[@]}" "$ext_tap/$formula@$version" >/dev/null 2>&1 && copy_brew_extensions "$formula") || pecl_install "$extension" >/dev/null 2>&1
@@ -134,9 +146,9 @@ patch_brew() {
 update_dependencies() {
   patch_brew
   if ! [ -e /tmp/update_dependencies ]; then
-    for repo in "$brew_repo" "$core_repo"; do
+    for repo in "$brew_repo" "${core_repo:?}"; do
       if [ -e "$repo" ]; then
-        git_retry -C "$repo" fetch origin master && git -C "$repo" reset --hard origin/master
+        git_retry -C "$repo" fetch origin main && git -C "$repo" reset --hard origin/main
       fi
     done
     echo '' | sudo tee /tmp/update_dependencies >/dev/null 2>&1
@@ -148,9 +160,9 @@ get_brewed_php() {
   cellar="$brew_prefix"/Cellar
   php_cellar="$cellar"/php
   if [ -d "$cellar" ] && ! [[ "$(find "$cellar" -maxdepth 1 -name "php@$version*" | wc -l 2>/dev/null)" -eq 0 ]]; then
-    php_semver | cut -c 1-3
+    php_semver
   elif [ -d "$php_cellar" ] && ! [[ "$(find "$php_cellar" -maxdepth 1 -name "$version*" | wc -l 2>/dev/null)" -eq 0 ]]; then
-    php_semver | cut -c 1-3
+    php_semver
   else
     echo 'false';
   fi
@@ -160,17 +172,24 @@ get_brewed_php() {
 add_php() {
   action=$1
   existing_version=$2
-  add_brew_tap "$php_tap"
-  update_dependencies
   suffix="$(get_php_formula_suffix)"
-  php_formula="shivammathur/php/php@$version$suffix"
+  php_keg="php@$version$suffix"
+  php_formula="shivammathur/php/$php_keg"
+  if [[ "$existing_version" = "false" || -n "$suffix" || "$action" = "upgrade" ]]; then
+    update_dependencies
+    add_brew_tap
+  fi
   if [[ "$existing_version" != "false" && -z "$suffix" ]]; then
-    ([ "$action" = "upgrade" ] && brew upgrade -f --overwrite "$php_formula") || brew unlink "$php_formula"
+    if [ "$action" = "upgrade" ]; then
+      brew upgrade -f --overwrite "$php_formula"
+    else
+      brew unlink "$php_keg"
+    fi
   else
-    brew install -f --overwrite "$php_formula"
+    brew install -f --overwrite "$php_formula" || brew upgrade -f --overwrite "$php_formula"
   fi
   sudo chown -R "$(id -un)":"$(id -gn)" "$brew_prefix"
-  brew link --force --overwrite "$php_formula"
+  brew link --force --overwrite "$php_keg"
 }
 
 # Function to get formula suffix
@@ -212,7 +231,7 @@ get_scan_dir() {
 
 # Function to handle self-hosted runner setup.
 self_hosted_helper() {
-  :
+  sudo mkdir -p /opt/hostedtoolcache >/dev/null 2>&1 || true
 }
 
 # Function to Setup PHP.
@@ -222,18 +241,18 @@ setup_php() {
   update=true
   check_pre_installed
   existing_version=$(get_brewed_php)
+  status="Found"
   if [[ "$version" =~ ${old_versions:?} ]]; then
     run_script "php5-darwin" "${version/./}" >/dev/null 2>&1
     status="Installed"
-  elif [ "$existing_version" != "$version" ]; then
+  elif [ "${existing_version:0:3}" != "$version" ]; then
     add_php "install" "$existing_version" >/dev/null 2>&1
     status="Installed"
-  elif [ "$existing_version" = "$version" ]; then
-    if [ "${update:?}" = "true" ]; then
+  elif [[ "${existing_version:0:3}" = "$version" && "${update:?}" = "true" ]]; then
+    brew_php_version="$(brew info --json "php@$version" 2>/dev/null | jq -r '.[].versions.stable')"
+    if [ "$brew_php_version" != "$existing_version" ]; then
       add_php "upgrade" "$existing_version" >/dev/null 2>&1
-      status="Updated to"
-    else
-      status="Found"
+      status="Upgraded"
     fi
   fi
   php_config="$(command -v php-config)"
@@ -258,7 +277,7 @@ setup_php() {
 }
 
 # Variables
-version=${1:-'8.4'}
+version=${1:-'8.5'}
 ini=${2:-'production'}
 src=${0%/*}/..
 php_formula=shivammathur/php/php@"$version"

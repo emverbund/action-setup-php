@@ -61,7 +61,23 @@ jest.mock('../src/fetch', () => ({
         } else if (!token || token === 'valid_token') {
           return {data: `[{"ref": "refs/tags/1.2.3", "url": "${url}"}]`};
         } else if (token === 'beta_token') {
-          return {data: `[{"ref": "refs/tags/1.2.3-beta1", "url": "${url}"}]`};
+          return {data: `[{"ref": "refs/tags/1.2.3beta1", "url": "${url}"}]`};
+        } else if (token === 'rc_token') {
+          return {
+            data: `[{"ref":"refs/tags/3.0.0RC1"},{"ref":"refs/tags/3.0.0RC2"}]`
+          };
+        } else if (token === 'non_semver_tags') {
+          return {
+            data: `[{"ref":"refs/tags/release-2025-09-18"},{"ref":"refs/tags/release-2025-09-17"}]`
+          };
+        } else if (token === 'undefined_ref') {
+          return {
+            data: `[{"url":"${url}"},{"ref":"refs/tags/v1.2.4","url":"${url}"}]`
+          };
+        } else if (token === 'multi_refs') {
+          return {
+            data: `[{"ref":"refs/tags/v1.2.3","url":"${url}"},{"ref":"refs/tags/1.2.4","url":"${url}"}]`
+          };
         } else if (token === 'no_data') {
           return {data: '[]'};
         } else {
@@ -89,16 +105,39 @@ jest.mock('../src/packagist', () => ({
 
 describe('Tools tests', () => {
   it.each`
-    token              | version
-    ${'invalid_token'} | ${'1.2'}
-    ${'valid_token'}   | ${'1.2.3'}
-    ${'beta_token'}    | ${'1.2.3-beta1'}
-    ${''}              | ${'1.2.3'}
+    token                | version
+    ${'invalid_token'}   | ${'1.2'}
+    ${'valid_token'}     | ${'1.2.3'}
+    ${'beta_token'}      | ${'1.2.3beta1'}
+    ${'undefined_ref'}   | ${'1.2.4'}
+    ${'multi_refs'}      | ${'1.2.4'}
+    ${'non_semver_tags'} | ${'release-2025-09-18'}
+    ${''}                | ${'1.2.3'}
   `('checking getSemverVersion: $token', async ({token, version}) => {
     process.env['GITHUB_TOKEN'] = token;
     expect(
       await tools.getSemverVersion(getData({tool: 'tool', version: '1.2'}))
     ).toBe(version);
+  });
+
+  it('checking getSemverVersion triggers ?? fallback via Map#get mock', async () => {
+    process.env['GITHUB_TOKEN'] = 'rc_token';
+    const spy = jest
+      .spyOn(Map.prototype as Map<string, string>, 'get')
+      .mockImplementation(function (
+        this: Map<string, string>,
+        key: string
+      ): string | undefined {
+        if (key === '3.0.0-RC2') {
+          return undefined;
+        }
+        return Map.prototype.get.call(this, key);
+      });
+    const result = await tools.getSemverVersion(
+      getData({tool: 'tool', version: '3.0.0'})
+    );
+    expect(result).toBe('3.0.0-RC2');
+    spy.mockRestore();
   });
 
   it.each`
@@ -332,14 +371,20 @@ describe('Tools tests', () => {
     ${'preview'}   | ${'7.4'}    | ${'true'}     | ${'https://dl.cloudsmith.io/public/shivammathur/composer-cache/raw/files/composer-7.4-preview.phar'}    | ${'https://getcomposer.org/composer-preview.phar'}
     ${'1'}         | ${'7.4'}    | ${'false'}    | ${'https://dl.cloudsmith.io/public/shivammathur/composer-cache/raw/files/composer-7.4-1.phar'}          | ${'https://getcomposer.org/composer-1.phar'}
     ${'2'}         | ${'7.4'}    | ${'false'}    | ${'https://dl.cloudsmith.io/public/shivammathur/composer-cache/raw/files/composer-7.4-2.phar'}          | ${'https://getcomposer.org/composer-2.phar'}
+    ${'latest'}    | ${'7.4'}    | ${'true'}     | ${'https://artifacts.setup-php.com/composer/composer-7.4-stable.phar'}                                  | ${'https://getcomposer.org/composer-stable.phar'}
+    ${'stable'}    | ${'7.4'}    | ${'true'}     | ${'https://artifacts.setup-php.com/composer/composer-7.4-stable.phar'}                                  | ${'https://getcomposer.org/composer-stable.phar'}
+    ${'snapshot'}  | ${'7.4'}    | ${'true'}     | ${'https://artifacts.setup-php.com/composer/composer-7.4-snapshot.phar'}                                | ${'https://getcomposer.org/composer.phar'}
+    ${'preview'}   | ${'7.4'}    | ${'true'}     | ${'https://artifacts.setup-php.com/composer/composer-7.4-preview.phar'}                                 | ${'https://getcomposer.org/composer-preview.phar'}
+    ${'1'}         | ${'7.4'}    | ${'false'}    | ${'https://artifacts.setup-php.com/composer/composer-7.4-1.phar'}                                       | ${'https://getcomposer.org/composer-1.phar'}
+    ${'2'}         | ${'7.4'}    | ${'false'}    | ${'https://artifacts.setup-php.com/composer/composer-7.4-2.phar'}                                       | ${'https://getcomposer.org/composer-2.phar'}
     ${'latest'}    | ${'7.1'}    | ${'true'}     | ${'https://github.com/shivammathur/composer-cache/releases/latest/download/composer-7.1-stable.phar'}   | ${'https://getcomposer.org/download/latest-2.2.x/composer.phar'}
     ${'stable'}    | ${'7.1'}    | ${'true'}     | ${'https://github.com/shivammathur/composer-cache/releases/latest/download/composer-7.1-stable.phar'}   | ${'https://getcomposer.org/download/latest-2.2.x/composer.phar'}
     ${'snapshot'}  | ${'7.1'}    | ${'true'}     | ${'https://github.com/shivammathur/composer-cache/releases/latest/download/composer-7.1-snapshot.phar'} | ${'https://getcomposer.org/download/latest-2.2.x/composer.phar'}
     ${'preview'}   | ${'7.1'}    | ${'true'}     | ${'https://github.com/shivammathur/composer-cache/releases/latest/download/composer-7.1-preview.phar'}  | ${'https://getcomposer.org/download/latest-2.2.x/composer.phar'}
     ${'1'}         | ${'7.1'}    | ${'false'}    | ${'https://github.com/shivammathur/composer-cache/releases/latest/download/composer-7.1-1.phar'}        | ${'https://getcomposer.org/composer-1.phar'}
     ${'2'}         | ${'7.1'}    | ${'false'}    | ${'https://github.com/shivammathur/composer-cache/releases/latest/download/composer-7.1-2.phar'}        | ${'https://getcomposer.org/download/latest-2.2.x/composer.phar'}
-    ${'1.2.3'}     | ${'7.4'}    | ${'false'}    | ${'https://github.com/composer/composer/releases/download/1.2.3/composer.phar'}                         | ${'https://getcomposer.org/composer-1.2.3.phar'}
-    ${'1.2.3-RC1'} | ${'7.4'}    | ${'false'}    | ${'https://github.com/composer/composer/releases/download/1.2.3-RC1/composer.phar'}                     | ${'https://getcomposer.org/composer-1.2.3-RC1.phar'}
+    ${'1.2.3'}     | ${'7.4'}    | ${'false'}    | ${'https://github.com/composer/composer/releases/download/1.2.3/composer.phar'}                         | ${'https://getcomposer.org/download/1.2.3/composer.phar'}
+    ${'1.2.3-RC1'} | ${'7.4'}    | ${'false'}    | ${'https://github.com/composer/composer/releases/download/1.2.3-RC1/composer.phar'}                     | ${'https://getcomposer.org/download/1.2.3-RC1/composer.phar'}
   `(
     'checking addComposer: $version, $php_version, $no_tool_cache',
     async ({version, php_version, no_tool_cache, cache_url, source_url}) => {
@@ -393,9 +438,9 @@ describe('Tools tests', () => {
 
   it.each([
     [
-      'blackfire, blackfire-player, box, churn, cs2pr, flex, grpc_php_plugin, parallel-lint, php-cs-fixer, php-scoper, phpDocumentor, phplint, phpstan, phpunit, pecl, phing, phinx, phinx:1.2.3, phive, phpunit-bridge, phpunit-polyfills, pint, php-config, phpize, protoc, symfony, vapor, wp, pie',
+      'blackfire, blackfire-player, box, churn, cs2pr, flex, grpc_php_plugin, mago, name-collision-detector, parallel-lint, php-cs-fixer, php-scoper, phpDocumentor, phplint, phpstan, phpunit, pecl, phing, phinx, phinx:1.2.3, phive, phpunit-bridge, phpunit-polyfills, pint, php-config, phpize, protoc, symfony, vapor, wp, pie',
       [
-        'add_tool https://github.com/shivammathur/composer-cache/releases/latest/download/composer-7.4-stable.phar,https://dl.cloudsmith.io/public/shivammathur/composer-cache/raw/files/composer-7.4-stable.phar,https://getcomposer.org/composer-stable.phar composer',
+        'add_tool https://github.com/shivammathur/composer-cache/releases/latest/download/composer-7.4-stable.phar,https://artifacts.setup-php.com/composer/composer-7.4-stable.phar,https://dl.cloudsmith.io/public/shivammathur/composer-cache/raw/files/composer-7.4-stable.phar,https://getcomposer.org/composer-stable.phar composer',
         'add_blackfire',
         'add_tool https://get.blackfire.io/blackfire-player-v1.22.0.phar blackfire-player "-V"',
         'add_tool https://github.com/box-project/box/releases/latest/download/box.phar box "--version"',
@@ -403,6 +448,8 @@ describe('Tools tests', () => {
         'add_tool https://github.com/staabm/annotate-pull-request-from-checkstyle/releases/latest/download/cs2pr cs2pr "-V"',
         'add_composer_tool flex flex symfony/ global',
         'add_grpc_php_plugin latest',
+        'add_mago',
+        'add_composer_tool name-collision-detector name-collision-detector shipmonk/ scoped',
         'add_tool https://github.com/php-parallel-lint/PHP-Parallel-Lint/releases/latest/download/parallel-lint.phar parallel-lint "--version"',
         'add_tool https://github.com/PHP-CS-Fixer/PHP-CS-Fixer/releases/download/v3.2.1/php-cs-fixer.phar php-cs-fixer "-V"',
         'add_tool https://github.com/humbug/php-scoper/releases/latest/download/php-scoper.phar php-scoper "--version"',
@@ -436,9 +483,9 @@ describe('Tools tests', () => {
 
   it.each([
     [
-      'behat, blackfire, blackfire-player, churn, composer-dependency-analyser, composer-normalize, composer-require-checker, composer-unused, cs2pr:1.2.3, ecs, flex, grpc_php_plugin:1.2.3, infection, phan, phan:1.2.3, phing:1.2.3, phinx, phive:1.2.3, php-config, phpcbf, phpcpd, phpcs, phpdoc, phpize, phpmd, phpspec, phpunit-bridge:5.6, phpunit-polyfills:1.0.1, protoc:v1.2.3, psalm, rector, symfony-cli, vapor-cli, wp-cli, pie',
+      'backward-compatibility-check, behat, blackfire, blackfire-player, churn, composer-dependency-analyser, composer-normalize, composer-require-checker, composer-unused, cs2pr:1.2.3, ecs, flex, grpc_php_plugin:1.2.3, infection, mago:0.26.1, name-collision-detector, phan, phan:1.2.3, phing:1.2.3, phinx, phive:1.2.3, php-config, phpcbf, phpcpd, phpcs, phpdoc, phpize, phpmd, phpspec, phpunit-bridge:5.6, phpunit-polyfills:1.0.1, protoc:v1.2.3, psalm, rector, symfony-cli, vapor-cli, wp-cli, pie',
       [
-        'add_tool https://github.com/shivammathur/composer-cache/releases/latest/download/composer-7.4-stable.phar,https://dl.cloudsmith.io/public/shivammathur/composer-cache/raw/files/composer-7.4-stable.phar,https://getcomposer.org/composer-stable.phar composer',
+        'add_tool https://github.com/shivammathur/composer-cache/releases/latest/download/composer-7.4-stable.phar,https://artifacts.setup-php.com/composer/composer-7.4-stable.phar,https://dl.cloudsmith.io/public/shivammathur/composer-cache/raw/files/composer-7.4-stable.phar,https://getcomposer.org/composer-stable.phar composer',
         'add_composer_tool behat behat behat/ scoped',
         'add_blackfire',
         'add_tool https://get.blackfire.io/blackfire-player-v1.22.0.phar blackfire-player "-V"',
@@ -451,6 +498,8 @@ describe('Tools tests', () => {
         'add_composer_tool flex flex symfony/ global',
         'add_grpc_php_plugin 1.2.3',
         'add_tool https://github.com/infection/infection/releases/latest/download/infection.phar infection "-V"',
+        'add_mago 0.26.1',
+        'add_composer_tool name-collision-detector name-collision-detector shipmonk/ scoped',
         'add_tool https://github.com/phan/phan/releases/latest/download/phan.phar phan "-v"',
         'add_tool https://github.com/phan/phan/releases/download/1.2.3/phan.phar phan "-v"',
         'add_tool https://www.phing.info/get/phing-1.2.3.phar,https://github.com/phingofficial/phing/releases/download/1.2.3/phing-1.2.3.phar phing "-v"',
@@ -469,6 +518,7 @@ describe('Tools tests', () => {
         'add_protoc 1.2.3',
         'add_tool https://github.com/vimeo/psalm/releases/latest/download/psalm.phar psalm "-v"',
         'add_composer_tool rector rector rector/ scoped',
+        'add_composer_tool backward-compatibility-check backward-compatibility-check roave/ scoped',
         'add_symfony latest',
         'add_composer_tool vapor-cli vapor-cli laravel/ scoped',
         'add_tool https://github.com/wp-cli/builds/blob/gh-pages/phar/wp-cli.phar?raw=true wp-cli "--version"',
@@ -485,9 +535,9 @@ describe('Tools tests', () => {
 
   it.each([
     [
-      'blackfire, blackfire-player:1.2.3, cs2pr, churn, deployer, does_not_exist, flex, phinx, phive:0.13.2, php-config, phpize, phpmd, simple-phpunit, symfony, wp, pie',
+      'blackfire, blackfire-player:1.2.3, cs2pr, churn, deployer, does_not_exist, flex, mago, name-collision-detector, phinx, phive:0.13.2, php-config, phpize, phpmd, simple-phpunit, symfony, wp, pie',
       [
-        'Add-Tool https://github.com/shivammathur/composer-cache/releases/latest/download/composer-7.4-stable.phar,https://dl.cloudsmith.io/public/shivammathur/composer-cache/raw/files/composer-7.4-stable.phar,https://getcomposer.org/composer-stable.phar composer',
+        'Add-Tool https://github.com/shivammathur/composer-cache/releases/latest/download/composer-7.4-stable.phar,https://artifacts.setup-php.com/composer/composer-7.4-stable.phar,https://dl.cloudsmith.io/public/shivammathur/composer-cache/raw/files/composer-7.4-stable.phar,https://getcomposer.org/composer-stable.phar composer',
         'Add-Blackfire',
         'blackfire-player is not a windows tool',
         'Add-Tool https://github.com/staabm/annotate-pull-request-from-checkstyle/releases/latest/download/cs2pr cs2pr "-V"',
@@ -495,6 +545,8 @@ describe('Tools tests', () => {
         'Add-Tool https://deployer.org/deployer.phar deployer "-V"',
         'Tool does_not_exist is not supported',
         'Add-ComposerTool flex flex symfony/ global',
+        'Add-Mago',
+        'Add-ComposerTool name-collision-detector name-collision-detector shipmonk/ scoped',
         'Add-ComposerTool phinx phinx robmorgan/ scoped',
         'Add-Tool https://github.com/phar-io/phive/releases/download/0.15.3/phive-0.15.3.phar phive "status"',
         'php-config is not a windows tool',
@@ -517,7 +569,7 @@ describe('Tools tests', () => {
     [
       'composer:v1, codeception/codeception, prestissimo, hirak/prestissimo, composer-prefetcher, narrowspark/automatic-composer-prefetcher, phinx: 1.2, robmorgan/phinx: ^1.2, user/tool:1.2.3, user/tool:~1.2',
       [
-        'Add-Tool https://github.com/shivammathur/composer-cache/releases/latest/download/composer-7.4-1.phar,https://dl.cloudsmith.io/public/shivammathur/composer-cache/raw/files/composer-7.4-1.phar,https://getcomposer.org/composer-1.phar composer',
+        'Add-Tool https://github.com/shivammathur/composer-cache/releases/latest/download/composer-7.4-1.phar,https://artifacts.setup-php.com/composer/composer-7.4-1.phar,https://dl.cloudsmith.io/public/shivammathur/composer-cache/raw/files/composer-7.4-1.phar,https://getcomposer.org/composer-1.phar composer',
         'Add-ComposerTool codeception codeception codeception/ global',
         'Add-ComposerTool prestissimo prestissimo hirak/ global',
         'Add-ComposerTool automatic-composer-prefetcher automatic-composer-prefetcher narrowspark/ global',
@@ -566,10 +618,10 @@ describe('Tools tests', () => {
   it.each`
     tools_csv                                             | script
     ${'none'}                                             | ${''}
-    ${'none, phpunit'}                                    | ${'\nstep_log "Setup Tools"\nadd_tool https://github.com/shivammathur/composer-cache/releases/latest/download/composer-7.4-stable.phar,https://dl.cloudsmith.io/public/shivammathur/composer-cache/raw/files/composer-7.4-stable.phar,https://getcomposer.org/composer-stable.phar composer latest\n\nadd_tool https://phar.phpunit.de/phpunit-7.4.0.phar,https://phar.phpunit.de/phpunit-7.phar phpunit "--version"'}
-    ${'composer:preview'}                                 | ${'add_tool https://github.com/shivammathur/composer-cache/releases/latest/download/composer-7.4-preview.phar,https://dl.cloudsmith.io/public/shivammathur/composer-cache/raw/files/composer-7.4-preview.phar,https://getcomposer.org/composer-preview.phar composer preview'}
-    ${'composer, composer:v1'}                            | ${'add_tool https://github.com/shivammathur/composer-cache/releases/latest/download/composer-7.4-1.phar,https://dl.cloudsmith.io/public/shivammathur/composer-cache/raw/files/composer-7.4-1.phar,https://getcomposer.org/composer-1.phar composer'}
-    ${'composer:v1, composer:preview, composer:snapshot'} | ${'add_tool https://github.com/shivammathur/composer-cache/releases/latest/download/composer-7.4-snapshot.phar,https://dl.cloudsmith.io/public/shivammathur/composer-cache/raw/files/composer-7.4-snapshot.phar,https://getcomposer.org/composer.phar composer snapshot'}
+    ${'none, phpunit'}                                    | ${'\nstep_log "Setup Tools"\nadd_tool https://github.com/shivammathur/composer-cache/releases/latest/download/composer-7.4-stable.phar,https://artifacts.setup-php.com/composer/composer-7.4-stable.phar,https://dl.cloudsmith.io/public/shivammathur/composer-cache/raw/files/composer-7.4-stable.phar,https://getcomposer.org/composer-stable.phar composer latest\n\nadd_tool https://phar.phpunit.de/phpunit-7.4.0.phar,https://phar.phpunit.de/phpunit-7.phar phpunit "--version"'}
+    ${'composer:preview'}                                 | ${'add_tool https://github.com/shivammathur/composer-cache/releases/latest/download/composer-7.4-preview.phar,https://artifacts.setup-php.com/composer/composer-7.4-preview.phar,https://dl.cloudsmith.io/public/shivammathur/composer-cache/raw/files/composer-7.4-preview.phar,https://getcomposer.org/composer-preview.phar composer preview'}
+    ${'composer, composer:v1'}                            | ${'add_tool https://github.com/shivammathur/composer-cache/releases/latest/download/composer-7.4-1.phar,https://artifacts.setup-php.com/composer/composer-7.4-1.phar,https://dl.cloudsmith.io/public/shivammathur/composer-cache/raw/files/composer-7.4-1.phar,https://getcomposer.org/composer-1.phar composer'}
+    ${'composer:v1, composer:preview, composer:snapshot'} | ${'add_tool https://github.com/shivammathur/composer-cache/releases/latest/download/composer-7.4-snapshot.phar,https://artifacts.setup-php.com/composer/composer-7.4-snapshot.phar,https://dl.cloudsmith.io/public/shivammathur/composer-cache/raw/files/composer-7.4-snapshot.phar,https://getcomposer.org/composer.phar composer snapshot'}
   `('checking composer setup: $tools_csv', async ({tools_csv, script}) => {
     expect(await tools.addTools(tools_csv, '7.4', 'linux')).toContain(script);
   });
