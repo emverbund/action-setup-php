@@ -4,6 +4,7 @@ export cross="✗"
 export curl_opts=(-sL)
 export old_versions="5.[3-5]"
 export jit_versions="8.[0-9]"
+export php_builder_versions="8.[3-9]"
 export nightly_versions="8.[6-9]"
 export xdebug3_versions="7.[2-4]|8.[0-9]"
 export latest="releases/latest/download"
@@ -58,6 +59,7 @@ read_env() {
      -n "$ACT" || -n "$CONTAINER" ]] && _runner=self-hosted || _runner=github
   runner="${runner:-${RUNNER:-$_runner}}"
   tool_path_dir="${setup_php_tools_dir:-${SETUP_PHP_TOOLS_DIR:-/usr/local/bin}}"
+  tool_cache_path_dir="${setup_php_tool_cache_dir:-${SETUP_PHP_TOOL_CACHE_DIR:-${RUNNER_TOOL_CACHE:-/opt/hostedtoolcache}/setup-php/tools}}"  
 
   if [[ "$runner" = "github" && $_runner = "self-hosted" ]]; then
     fail_fast=true
@@ -79,6 +81,7 @@ read_env() {
   export update
   export ts
   export tool_path_dir
+  export tool_cache_path_dir
 }
 
 # Function to create a lock.
@@ -117,6 +120,25 @@ get_sha256() {
   elif command -v openssl >/dev/null; then
     printf '%s' "$input" | openssl dgst -sha256 | cut -d' ' -f2
   fi
+}
+
+# Function to verify the checksum of a file.
+# checksum format: sha256:<hash> or sha512:<hash>
+verify_checksum() {
+  local file_path=$1
+  local checksum=$2
+  local algo="${checksum%%:*}"
+  local expected="${checksum#*:}"
+  local actual=
+  local hash_command=
+  if hash_command="$(command -v "${algo}sum")"; then
+    actual="$(sudo "$hash_command" "$file_path" | cut -d' ' -f1)"
+  elif hash_command="$(command -v shasum)"; then
+    actual="$(sudo "$hash_command" -a "${algo#sha}" "$file_path" | cut -d' ' -f1)"
+  elif hash_command="$(command -v openssl)"; then
+    actual="$(sudo "$hash_command" dgst -"$algo" "$file_path" | awk '{print $NF}')"
+  fi
+  [ -n "$actual" ] && [ "$(echo "$actual" | tr '[:upper:]' '[:lower:]')" = "$(echo "$expected" | tr '[:upper:]' '[:lower:]')" ]
 }
 
 # Function to download a file using cURL.
@@ -169,14 +191,15 @@ get_shell_profile() {
 # Function to add a path to the PATH variable.
 add_path() {
   path_to_add=$1
-  [[ ":$PATH:" == *":$path_to_add:"* ]] && return
+  action=$2
+  [[ "$action" == "verify" && ":$PATH:" == *":$path_to_add:"* ]] && return
   if [[ -n "$GITHUB_PATH" ]]; then
-    echo "$path_to_add" | tee -a "$GITHUB_PATH" >/dev/null 2>&1
+    printf '%s\n%s' "$path_to_add" "$(grep -v "^${path_to_add}$" "$GITHUB_PATH" 2>/dev/null)" > "$GITHUB_PATH"
   else
     profile=$(get_shell_profile)
     ([ -e "$profile" ] && grep -q ":$path_to_add\"" "$profile" 2>/dev/null) || echo "export PATH=\"\${PATH:+\${PATH}:}\"$path_to_add" | sudo tee -a "$profile" >/dev/null 2>&1
   fi
-  export PATH="${PATH:+${PATH}:}$path_to_add"
+  [[ ":$PATH:" == *":$path_to_add:"* ]] || export PATH="${PATH:+${PATH}:}$path_to_add"
 }
 
 # Function to add environment variables using a PATH.

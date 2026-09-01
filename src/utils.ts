@@ -1,6 +1,6 @@
 import fs from 'fs';
 import * as path from 'path';
-import * as core from '@actions/core';
+import * as core from './core';
 import * as fetch from './fetch';
 
 /**
@@ -9,16 +9,19 @@ import * as fetch from './fetch';
  * @param property
  */
 export async function readEnv(property: string): Promise<string> {
+  if (!/^[A-Za-z0-9_-]+$/.test(property)) {
+    return '';
+  }
   const property_lc: string = property.toLowerCase();
   const property_uc: string = property.toUpperCase();
-  return (
-    process.env[property] ||
-    process.env[property_lc] ||
-    process.env[property_uc] ||
-    process.env[property_lc.replace('_', '-')] ||
-    process.env[property_uc.replace('_', '-')] ||
-    ''
-  );
+  const candidates = [
+    property,
+    property_lc,
+    property_uc,
+    property_lc.replace('_', '-'),
+    property_uc.replace('_', '-')
+  ].filter((value, index, array) => array.indexOf(value) === index);
+  return candidates.map(name => process.env[name] || '').find(Boolean) || '';
 }
 
 /**
@@ -62,15 +65,31 @@ export async function getManifestURLS(): Promise<string[]> {
  */
 export async function parseVersion(version: string): Promise<string> {
   switch (true) {
-    case /^(latest|lowest|highest|nightly|\d+\.x)$/.test(version):
+    case /^pre(-installed)?$/.test(version):
+      return 'pre';
+    case /^(latest|lowest|highest|nightly|master|\d+\.x)$/.test(version):
       for (const manifestURL of await getManifestURLS()) {
         const fetchResult = await fetch.fetch(manifestURL);
         if (fetchResult['data'] ?? false) {
-          return JSON.parse(fetchResult['data'])[version];
+          const resolved: string | undefined = JSON.parse(fetchResult['data'])[
+            version
+          ];
+          if (resolved === undefined) {
+            throw new Error(`Invalid PHP version: ${version.slice(0, 20)}`);
+          }
+          if (!/^\d+\.\d+$/.test(resolved)) {
+            throw new Error(
+              `Invalid PHP version in manifest: ${resolved.slice(0, 10)}`
+            );
+          }
+          return resolved;
         }
       }
       throw new Error(`Could not fetch the PHP version manifest.`);
     default:
+      if (!/^\d+(\.\d+){0,2}$/.test(version)) {
+        throw new Error(`Invalid PHP version: ${version.slice(0, 20)}`);
+      }
       switch (true) {
         case version.length > 1:
           return version.slice(0, 3);
@@ -86,20 +105,16 @@ export async function parseVersion(version: string): Promise<string> {
  * @param ini_file
  */
 export async function parseIniFile(ini_file: string): Promise<string> {
-  switch (true) {
-    case /^(production|development|none)$/.test(ini_file):
-      return ini_file;
-    case /php\.ini-(production|development)$/.test(ini_file):
-      return ini_file.split('-')[1];
-    default:
-      return 'production';
+  if (/^(production|development|none)$/.test(ini_file)) {
+    return ini_file;
   }
+  const match = ini_file.match(/php\.ini-(production|development)$/);
+  return match ? match[1] : 'production';
 }
 
 /**
- * Async foreach loop
+ * Async foreach loop using modern for...of pattern
  *
- * @author https://github.com/Atinux
  * @param array
  * @param callback
  */
@@ -111,8 +126,8 @@ export async function asyncForEach(
     array: Array<string>
   ) => Promise<void>
 ): Promise<void> {
-  for (let index = 0; index < array.length; index++) {
-    await callback(array[index], index, array);
+  for (const [index, element] of array.entries()) {
+    await callback(element, index, array);
   }
 }
 
@@ -173,10 +188,10 @@ export async function log(
 export async function stepLog(message: string, os: string): Promise<string> {
   switch (os) {
     case 'win32':
-      return 'Step-Log "' + message + '"';
+      return 'Step-Log "' + escapeForShell(message, os) + '"';
     case 'linux':
     case 'darwin':
-      return 'step_log "' + message + '"';
+      return 'step_log "' + escapeForShell(message, os) + '"';
     default:
       return await log('Platform ' + os + ' is not supported', os, 'error');
   }
@@ -195,15 +210,38 @@ export async function addLog(
   message: string,
   os: string
 ): Promise<string> {
+  const sub = escapeForShell(subject, os);
+  const msg = escapeForShell(message, os);
   switch (os) {
     case 'win32':
-      return 'Add-Log "' + mark + '" "' + subject + '" "' + message + '"';
+      return `Add-Log "${mark}" "${sub}" "${msg}"`;
     case 'linux':
     case 'darwin':
-      return 'add_log "' + mark + '" "' + subject + '" "' + message + '"';
+      return `add_log "${mark}" "${sub}" "${msg}"`;
     default:
       return await log('Platform ' + os + ' is not supported', os, 'error');
   }
+}
+
+export function escapeForShell(value: string, os: string): string {
+  if (os === 'win32') {
+    return value.replace(/[`$"]/g, '`$&');
+  }
+  return value.replace(/[\\`$"]/g, '\\$&');
+}
+
+export function safeArg(value: string, os: string): string {
+  if (!/^[a-zA-Z0-9_./:@+,~^-]*$/.test(value)) {
+    return '"' + escapeForShell(value, os) + '"';
+  }
+  return value;
+}
+
+export function sanitizeShellInput(value: string, strict = false): string {
+  const pattern = strict
+    ? /[$`"';|&(){}[\]\\<>*?\n\r\t]/g
+    : /[$`"';|&(){}[\]\\\n\r\t]/g;
+  return value.replace(pattern, '');
 }
 
 /**
@@ -225,11 +263,11 @@ export async function extensionArray(
           .split(',')
 
           .map(function (extension: string) {
+            extension = extension.trim().replace(/^\\\s*/, '');
             if (/.+-.+\/.+@.+/.test(extension)) {
               return extension;
             }
             return extension
-              .trim()
               .toLowerCase()
               .replace(/^(:)?(php[-_]|none|zend )|(-[^-]*)-/, '$1$3');
           })
@@ -400,7 +438,7 @@ export async function customPackage(
   version: string,
   os: string
 ): Promise<string> {
-  const pkg_name: string = pkg.replace(/\d+|(pdo|pecl)[_-]/, '');
+  const pkg_name: string = pkg.replace(/\d+|(pdo|pecl)[_-]|[_-]db2/, '');
   const script_extension: string = await scriptExtension(os);
   const script: string = path.join(
     __dirname,
@@ -432,22 +470,35 @@ export async function parseExtensionSource(
   );
 }
 
+const VERSION_INPUT_REGEX =
+  /^(latest|lowest|highest|nightly|master|pre|pre-installed|\d+\.x|\d+(\.\d+){0,2})$/;
+
+function validatePHPVersionInput(version: string, source: string): string {
+  if (!VERSION_INPUT_REGEX.test(version)) {
+    throw new Error(
+      `Invalid PHP version in ${source}: ${version.slice(0, 20)}`
+    );
+  }
+  return version;
+}
+
 /**
  * Read php version from input or file
  */
 export async function readPHPVersion(): Promise<string> {
   const version = await getInput('php-version', false);
   if (version) {
-    return version;
+    return validatePHPVersionInput(version, 'php-version input');
   }
   const versionFile =
     (await getInput('php-version-file', false)) || '.php-version';
   if (fs.existsSync(versionFile)) {
     const contents: string = fs.readFileSync(versionFile, 'utf8');
-    const match: RegExpMatchArray | null = contents.match(
-      /^(?:php\s)?(\d+\.\d+\.\d+)$/m
+    const match = contents.match(/^(?:php\s)?(\d+\.\d+\.\d+)$/m);
+    return validatePHPVersionInput(
+      match ? match[1] : contents.trim(),
+      versionFile
     );
-    return match ? match[1] : contents.trim();
   } else if (versionFile !== '.php-version') {
     throw new Error(`Could not find '${versionFile}' file.`);
   }
@@ -457,11 +508,11 @@ export async function readPHPVersion(): Promise<string> {
   if (fs.existsSync(composerLock)) {
     const lockFileContents = JSON.parse(fs.readFileSync(composerLock, 'utf8'));
     /* istanbul ignore next */
-    if (
-      lockFileContents['platform-overrides'] &&
-      lockFileContents['platform-overrides']['php']
-    ) {
-      return lockFileContents['platform-overrides']['php'];
+    if (lockFileContents['platform-overrides']?.['php']) {
+      return validatePHPVersionInput(
+        lockFileContents['platform-overrides']['php'],
+        'composer.lock platform-overrides.php'
+      );
     }
   }
 
@@ -471,12 +522,11 @@ export async function readPHPVersion(): Promise<string> {
       fs.readFileSync(composerJson, 'utf8')
     );
     /* istanbul ignore next */
-    if (
-      composerFileContents['config'] &&
-      composerFileContents['config']['platform'] &&
-      composerFileContents['config']['platform']['php']
-    ) {
-      return composerFileContents['config']['platform']['php'];
+    if (composerFileContents['config']?.['platform']?.['php']) {
+      return validatePHPVersionInput(
+        composerFileContents['config']['platform']['php'],
+        'composer.json config.platform.php'
+      );
     }
   }
 

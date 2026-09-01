@@ -1,11 +1,13 @@
 # Helper function to add gearman extension.
 add_gearman_helper() {
-  install_packages libgearman-dev
   enable_extension gearman extension
   if ! check_extension gearman; then
     status="Installed and enabled"
-    if [[ "${version:?}" =~ 5.[3-5] ]]; then
+    install_packages libgearman-dev
+    if [[ "${version:?}" =~ 5.[3-6] ]]; then
       pecl_install gearman-1.1.2
+    elif [[ "${version:?}" =~ 7.0 ]]; then
+      pecl_install gearman-2.1.3
     else
       install_packages php"${version:?}"-gearman || pecl_install gearman
     fi

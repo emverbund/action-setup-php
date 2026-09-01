@@ -18,10 +18,14 @@ on:
       - 'examples/**'
 permissions:
   contents: read
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   run:
     name: Run
+    environment: codecov
     runs-on: ${{ matrix.operating-system }}
     strategy:
       fail-fast: false
@@ -29,14 +33,15 @@ jobs:
         operating-system: [ubuntu-latest, windows-latest, macos-latest]
     steps:
       - name: Checkout
-        uses: actions/checkout@v5
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 2
+          persist-credentials: false
 
-      - name: Setup Node.js 20.x
-        uses: actions/setup-node@v6
+      - name: Setup Node.js 24.x
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v6
         with:
-          node-version: 20.x
+          node-version: 24.x
 
       - name: Install dependencies
         run: npm install
@@ -54,7 +59,7 @@ jobs:
         run: npm audit
 
       - name: Send Coverage
-        uses: codecov/codecov-action@v5
+        uses: codecov/codecov-action@fb8b3582c8e4def4969c97caa2f19720cb33a72f # v6
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           files: coverage/lcov.info
